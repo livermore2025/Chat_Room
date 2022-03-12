@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import io from "socket.io-client";
 import TextField from "@material-ui/core/TextField";
 import "./App.css";
@@ -12,10 +12,16 @@ function App() {
   const [room, setRoom] = useState("default");
 
   useEffect(() => {
+    socket.emit("join Room", { roomId: room });
     socket.on("message", ({ name, message }) => {
-      setChat([...chat, { name, message }]);
+      setChat((prev) => [...prev, { name, message }]);
     });
+    return () => {
+      socket.removeAllListeners();
+    }; // 이부분 없으면 렌더링 종료시에 socket 제거가 안됨.
   }, []);
+  // [] 안써주면 chat 바뀔때마다 socket.on 이 다시 정의됨. useEffect 살펴볼 것.
+  // socket.on은 첫 렌더링 시기에 정의 되는데 이때 chat값이 reference 값으로 저장되어있으므로 문제가됨.
 
   const onTextChange = (e) => {
     setState({ ...state, [e.target.name]: e.target.value });
@@ -38,9 +44,12 @@ function App() {
     ));
   };
 
-  const selectRoom = (room) => {
-    setRoom(room);
-    socket.emit("join", { roomId: room });
+  const selectRoom = async (roomId) => {
+    // socket.emit('disconnect Room', { roomId: room });
+    console.log("asdf");
+    socket.emit("join Room", { roomId });
+    setChat([...chat, { name: "관리자", message: `${roomId} 로 방이 바뀜` }]);
+    setRoom(roomId);
   };
 
   return (
@@ -49,6 +58,7 @@ function App() {
         <form onSubmit={onMessageSubmit}>
           <div>현재 조인된 룸 : {room}</div>
           <h1>Message</h1>
+          <div>{state.name}</div>
           <div className="name-field">
             <TextField
               name="name"
